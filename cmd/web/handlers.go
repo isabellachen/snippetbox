@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -17,9 +16,8 @@ func validateParam(param string) error {
 }
 
 func (application *application) HomeHandler(w http.ResponseWriter, res *http.Request) {
-	application.infoLog.Printf("Home handler called")
 	if res.URL.Path != "/" {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		application.notFound(w, http.StatusText(http.StatusNotFound))
 	}
 
 	files := []string{
@@ -30,16 +28,12 @@ func (application *application) HomeHandler(w http.ResponseWriter, res *http.Req
 
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		// application.errorLog.Fatal(err.Error())
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", 500)
+		application.serverError(w, err)
 		return
 	}
 	err = ts.ExecuteTemplate(w, "base", nil)
 	if err != nil {
-
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", 500)
+		application.serverError(w, err)
 	}
 	w.Write([]byte("hello from snippetbox"))
 }
@@ -47,7 +41,7 @@ func (application *application) HomeHandler(w http.ResponseWriter, res *http.Req
 func (application *application) SnippetCreate(w http.ResponseWriter, res *http.Request) {
 	if res.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		application.clientError(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
 		return
 	}
 	w.Write([]byte("Create a new snippet..."))
@@ -57,7 +51,8 @@ func (application *application) SnippetView(w http.ResponseWriter, res *http.Req
 	param := res.URL.Query().Get("id")
 	if err := validateParam(param); err != nil {
 		message := fmt.Sprintf("Item %s does not exist", param)
-		http.Error(w, message, http.StatusNotFound)
+		application.notFound(w, message)
+
 		return
 	}
 	message := fmt.Sprintf("Snippet %s", param)
@@ -65,14 +60,14 @@ func (application *application) SnippetView(w http.ResponseWriter, res *http.Req
 	w.Write([]byte(message))
 }
 
-func newMux(app *application) http.Handler {
+func newMux(cfg *config) http.Handler {
 	mux := http.NewServeMux()
 
 	fileServer := http.FileServer(http.Dir(cfg.static))
 
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-	mux.HandleFunc("/", app.HomeHandler)
-	mux.HandleFunc("/snippet/create", app.SnippetCreate)
-	mux.HandleFunc("/snippet/view", app.SnippetView)
+	mux.HandleFunc("/", cfg.Applicaion.HomeHandler)
+	mux.HandleFunc("/snippet/create", cfg.Applicaion.SnippetCreate)
+	mux.HandleFunc("/snippet/view", cfg.Applicaion.SnippetView)
 	return mux
 }

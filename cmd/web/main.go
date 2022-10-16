@@ -9,11 +9,10 @@ import (
 	"time"
 )
 
-var cfg config
-
 type config struct {
-	addr   string
-	static string
+	addr       string
+	static     string
+	Applicaion *application
 }
 
 type application struct {
@@ -22,7 +21,17 @@ type application struct {
 }
 
 func main() {
-	app := &application{}
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+
+	app := &application{
+		infoLog:  infoLog,
+		errorLog: errorLog,
+	}
+
+	cfg := &config{
+		Applicaion: app,
+	}
 
 	flag.StringVar(&cfg.addr, "addr", "8080", "HTTP network address")
 	flag.StringVar(&cfg.static, "static", "./ui/static/", "Path for static files")
@@ -30,16 +39,11 @@ func main() {
 	// Call flag.Parse() only after all the flags have been declared
 	flag.Parse()
 
-	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
-	app.infoLog = infoLog
-	app.errorLog = errorLog
-
 	infoLog.Printf("Listening on port %v...", cfg.addr)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", "localhost", cfg.addr),
-		Handler:      newMux(app),
+		Handler:      app.routes(cfg),
 		ErrorLog:     errorLog,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
