@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path/filepath"
 	"strconv"
 )
 
@@ -20,10 +21,14 @@ func (application *application) HomeHandler(w http.ResponseWriter, res *http.Req
 		application.notFound(w, http.StatusText(http.StatusNotFound))
 	}
 
+	baseTemplatePath := filepath.Join(application.basePath, "/ui/html/pages/base.tmpl.html")
+	homeTemplatePath := filepath.Join(application.basePath, "/ui/html/pages/home.tmpl.html")
+	navTemplatePath := filepath.Join(application.basePath, "/ui/html/partials/nav.tmpl.html")
+
 	files := []string{
-		"./ui/html/pages/base.tmpl.html",
-		"./ui/html/pages/home.tmpl.html",
-		"./ui/html/partials/nav.tmpl.html",
+		baseTemplatePath,
+		homeTemplatePath,
+		navTemplatePath,
 	}
 
 	ts, err := template.ParseFiles(files...)
@@ -35,7 +40,6 @@ func (application *application) HomeHandler(w http.ResponseWriter, res *http.Req
 	if err != nil {
 		application.serverError(w, err)
 	}
-	w.Write([]byte("hello from snippetbox"))
 }
 
 func (application *application) SnippetCreate(w http.ResponseWriter, res *http.Request) {
@@ -60,6 +64,7 @@ func (application *application) SnippetView(w http.ResponseWriter, res *http.Req
 	w.Write([]byte(message))
 }
 
+// remove
 func newMux(cfg *config) http.Handler {
 	mux := http.NewServeMux()
 

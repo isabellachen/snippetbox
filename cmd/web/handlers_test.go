@@ -2,15 +2,32 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func setupApi(t *testing.T) (string, func()) {
 	t.Helper()
-	testServer := httptest.NewServer(newMux())
+
+	cwd, _ := os.Getwd()
+	basePath := filepath.Join(cwd, "../..")
+
+	app := &application{
+		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
+		errorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
+		basePath: basePath,
+	}
+
+	cfg := &config{
+		Applicaion: app,
+	}
+
+	testServer := httptest.NewServer(app.routes(cfg))
 
 	return testServer.URL, func() {
 		testServer.Close()
@@ -25,7 +42,7 @@ func TestGet(t *testing.T) {
 	}{
 		{path: "/",
 			expectedStatusCode: http.StatusOK,
-			expectedContent:    "hello from snippetbox",
+			expectedContent:    "Home - Snippetbox",
 		},
 		{path: "/nugget",
 			expectedStatusCode: http.StatusNotFound,
@@ -49,7 +66,7 @@ func TestGet(t *testing.T) {
 		}
 
 		switch {
-		case strings.Contains(res.Header.Get("Content-Type"), "text/plain"):
+		case strings.Contains(res.Header.Get("Content-Type"), "text/html") || strings.Contains(res.Header.Get("Content-Type"), "text/plain"):
 			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
 				t.Error(err)
