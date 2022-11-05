@@ -23,9 +23,7 @@ func setupApi(t *testing.T) (string, func()) {
 		basePath: basePath,
 	}
 
-	cfg := &config{
-		Applicaion: app,
-	}
+	cfg := &config{}
 
 	testServer := httptest.NewServer(app.routes(cfg))
 

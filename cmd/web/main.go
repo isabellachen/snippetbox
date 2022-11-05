@@ -12,33 +12,35 @@ import (
 	// Import with blank identifier so the library can
 	// register itself with the database/sql package
 	_ "github.com/go-sql-driver/mysql"
+	"snippetbox.isachen.com/internal/models"
+	"snippetbox.isachen.com/internal/repository"
 )
 
 type config struct {
-	addr       string
-	static     string
-	dsn        string
-	Applicaion *application
+	addr   string
+	static string
+	dsn    string
 }
 
 type application struct {
 	infoLog  *log.Logger
 	errorLog *log.Logger
 	basePath string
+	repo     models.Repository
 }
 
 func main() {
 	cwd, _ := os.Getwd()
+	repo := repository.NewInMemoryRepo()
 
 	app := &application{
+		repo:     repo,
+		basePath: cwd,
 		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
 		errorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
-		basePath: cwd,
 	}
 
-	cfg := &config{
-		Applicaion: app,
-	}
+	cfg := &config{}
 
 	flag.StringVar(&cfg.dsn, "dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
 	flag.StringVar(&cfg.addr, "addr", "8080", "HTTP network address")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -8,22 +9,22 @@ import (
 	"strconv"
 )
 
-func validateParam(param string) error {
-	_, err := strconv.Atoi(param)
+func validateParam(param string) (int, error) {
+	id, err := strconv.Atoi(param)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return id, nil
 }
 
-func (application *application) HomeHandler(w http.ResponseWriter, res *http.Request) {
-	if res.URL.Path != "/" {
-		application.notFound(w, http.StatusText(http.StatusNotFound))
+func (app *application) HomeHandler(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path != "/" {
+		app.notFound(w, http.StatusText(http.StatusNotFound))
 	}
 
-	baseTemplatePath := filepath.Join(application.basePath, "/ui/html/pages/base.tmpl.html")
-	homeTemplatePath := filepath.Join(application.basePath, "/ui/html/pages/home.tmpl.html")
-	navTemplatePath := filepath.Join(application.basePath, "/ui/html/partials/nav.tmpl.html")
+	baseTemplatePath := filepath.Join(app.basePath, "/ui/html/pages/base.tmpl.html")
+	homeTemplatePath := filepath.Join(app.basePath, "/ui/html/pages/home.tmpl.html")
+	navTemplatePath := filepath.Join(app.basePath, "/ui/html/partials/nav.tmpl.html")
 
 	files := []string{
 		baseTemplatePath,
@@ -33,46 +34,51 @@ func (application *application) HomeHandler(w http.ResponseWriter, res *http.Req
 
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		application.serverError(w, err)
+		app.serverError(w, err)
 		return
 	}
 	err = ts.ExecuteTemplate(w, "base", nil)
 	if err != nil {
-		application.serverError(w, err)
+		app.serverError(w, err)
 	}
 }
 
-func (application *application) SnippetCreate(w http.ResponseWriter, res *http.Request) {
-	if res.Method != http.MethodPost {
+func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
-		application.clientError(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
+		app.clientError(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
 		return
 	}
-	w.Write([]byte("Create a new snippet..."))
+
+	item := &struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}{}
+
+	if err := json.NewDecoder(req.Body).Decode(item); err != nil {
+		message := fmt.Sprintf("Invalid JSON: %s", err)
+		app.clientError(w, http.StatusMethodNotAllowed, message)
+	}
+	app.repo.Create(item.Title, item.Content)
+
+	w.Write([]byte("Created a new snippet."))
 }
 
-func (application *application) SnippetView(w http.ResponseWriter, res *http.Request) {
-	param := res.URL.Query().Get("id")
-	if err := validateParam(param); err != nil {
+func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
+	param := req.URL.Query().Get("id")
+	id, err := validateParam(param)
+
+	if err != nil {
 		message := fmt.Sprintf("Item %s does not exist", param)
-		application.notFound(w, message)
-
+		app.notFound(w, message)
 		return
 	}
-	message := fmt.Sprintf("Snippet %s", param)
-	w.Header().Set("Content-Type", "application/json")
+
+	snippet, err := app.repo.ById(id)
+	if err != nil {
+		app.notFound(w, err.Error())
+	}
+	message := fmt.Sprintf("Snippet Title %s", snippet.Title)
+	w.Header().Set("Content-Type", "app/json")
 	w.Write([]byte(message))
-}
-
-// remove
-func newMux(cfg *config) http.Handler {
-	mux := http.NewServeMux()
-
-	fileServer := http.FileServer(http.Dir(cfg.static))
-
-	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-	mux.HandleFunc("/", cfg.Applicaion.HomeHandler)
-	mux.HandleFunc("/snippet/create", cfg.Applicaion.SnippetCreate)
-	mux.HandleFunc("/snippet/view", cfg.Applicaion.SnippetView)
-	return mux
 }
