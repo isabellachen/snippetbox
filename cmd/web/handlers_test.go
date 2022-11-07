@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"snippetbox.isachen.com/internal/repository"
 )
 
 func setupApi(t *testing.T) (string, func()) {
@@ -17,7 +22,10 @@ func setupApi(t *testing.T) (string, func()) {
 	cwd, _ := os.Getwd()
 	basePath := filepath.Join(cwd, "../..")
 
+	repo := repository.NewInMemoryRepo()
+
 	app := &application{
+		repo:     repo,
 		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
 		errorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
 		basePath: basePath,
@@ -78,4 +86,56 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Unsupported Content-Type: %q", res.Header.Get("Content-Type"))
 		}
 	}
+}
+
+func TestCreate(t *testing.T) {
+	url, cleanup := setupApi(t)
+	fmt.Println(url)
+	defer cleanup()
+	title := "The Little Peanut"
+
+	t.Run("Add", func(t *testing.T) {
+		var body bytes.Buffer
+		item := struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+		}{
+			Title:   title,
+			Content: "See how fast she runs!",
+		}
+
+		if err := json.NewEncoder(&body).Encode(item); err != nil {
+			t.Fatal(err)
+		}
+
+		res, err := http.Post(url+"/snippet/create", "application/json", &body)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if res.StatusCode != http.StatusCreated {
+			t.Errorf("Expected %q, got %q", http.StatusText(http.StatusCreated), http.StatusText(res.StatusCode))
+		}
+	})
+
+	t.Run("Check Add", func(t *testing.T) {
+		res, err := http.Get(url + "/snippet/view?id=1")
+		if err != nil {
+			t.Error(err)
+		}
+
+		var response snippetResponse
+
+		err = json.NewDecoder(res.Body).Decode(&response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res.Body.Close()
+
+		if response.Result.Title != title {
+			t.Errorf("Expected %q, got %q", title, response.Result.Title)
+		}
+	})
 }

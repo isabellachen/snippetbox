@@ -7,7 +7,13 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+
+	"snippetbox.isachen.com/internal/models"
 )
+
+type snippetResponse struct {
+	Result models.Snippet `json:"result"`
+}
 
 func validateParam(param string) (int, error) {
 	id, err := strconv.Atoi(param)
@@ -59,9 +65,17 @@ func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) 
 		message := fmt.Sprintf("Invalid JSON: %s", err)
 		app.clientError(w, http.StatusMethodNotAllowed, message)
 	}
-	app.repo.Create(item.Title, item.Content)
 
-	w.Write([]byte("Created a new snippet."))
+	id, err := app.repo.Create(item.Title, item.Content)
+
+	if err != nil {
+		app.serverError(w, err)
+	}
+
+	message := fmt.Sprintf("Created a new snippet with id %d", id)
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(message))
 }
 
 func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
@@ -78,7 +92,18 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		app.notFound(w, err.Error())
 	}
-	message := fmt.Sprintf("Snippet Title %s", snippet.Title)
-	w.Header().Set("Content-Type", "app/json")
-	w.Write([]byte(message))
+
+	response := &snippetResponse{
+		Result: snippet,
+	}
+
+	b, err := json.Marshal(response)
+
+	if err != nil {
+		app.serverError(w, err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }
