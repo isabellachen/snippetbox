@@ -12,7 +12,7 @@ import (
 )
 
 type snippetResponse struct {
-	Result models.Snippet `json:"result"`
+	Result *models.Snippet `json:"result"`
 }
 
 func validateParam(param string) (int, error) {

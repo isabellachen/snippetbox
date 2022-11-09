@@ -92,7 +92,9 @@ func TestCreate(t *testing.T) {
 	url, cleanup := setupApi(t)
 	fmt.Println(url)
 	defer cleanup()
+
 	title := "The Little Peanut"
+	content := "See how fast she runs!"
 
 	t.Run("Add", func(t *testing.T) {
 		var body bytes.Buffer
@@ -101,7 +103,7 @@ func TestCreate(t *testing.T) {
 			Content string `json:"content"`
 		}{
 			Title:   title,
-			Content: "See how fast she runs!",
+			Content: content,
 		}
 
 		if err := json.NewEncoder(&body).Encode(item); err != nil {
@@ -132,10 +134,18 @@ func TestCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected %q, got %q", http.StatusText(http.StatusOK), http.StatusText(res.StatusCode))
+		}
+
 		res.Body.Close()
 
 		if response.Result.Title != title {
-			t.Errorf("Expected %q, got %q", title, response.Result.Title)
+			t.Errorf("Expected title %q, got %q", title, response.Result.Title)
 		}
+		if response.Result.Content != content {
+			t.Errorf("Expected title %q, got %q", content, response.Result.Content)
+		}
+
 	})
 }

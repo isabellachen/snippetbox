@@ -5,7 +5,7 @@ import (
 )
 
 type Snippet struct {
-	ID      int64
+	ID      int
 	Title   string `json:"title"`
 	Content string `json:"content"`
 	Created time.Time
@@ -13,7 +13,7 @@ type Snippet struct {
 }
 
 type Repository interface {
-	Create(title string, content string) (int64, error)
-	ById(id int) (Snippet, error)
-	Last() (Snippet, error)
+	Create(title string, content string) (int, error)
+	ById(id int) (*Snippet, error)
+	Last() (*Snippet, error)
 }

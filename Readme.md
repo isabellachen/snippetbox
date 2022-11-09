@@ -15,8 +15,9 @@ Connect with
 Use DB
 
 - `USE snippetbox`
+- `SELECT * from snippets`
 
 Stop SQL
 
-- `ps -a | grep mysqld (show PID)`
+- `ps aux | grep mysqld (show PID)`
 - `kill -TERM PID`

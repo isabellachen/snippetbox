@@ -31,7 +31,18 @@ type application struct {
 
 func main() {
 	cwd, _ := os.Getwd()
-	repo := repository.NewInMemoryRepo()
+
+	cfg := &config{}
+
+	flag.StringVar(&cfg.dsn, "dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
+	flag.StringVar(&cfg.addr, "addr", "8080", "HTTP network address")
+	flag.StringVar(&cfg.static, "static", "./ui/static/", "Path for static files")
+
+	// repo := repository.NewInMemoryRepo()
+	repo, err := repository.NewSqlRepo(cfg.dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	app := &application{
 		repo:     repo,
@@ -39,12 +50,6 @@ func main() {
 		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
 		errorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
 	}
-
-	cfg := &config{}
-
-	flag.StringVar(&cfg.dsn, "dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
-	flag.StringVar(&cfg.addr, "addr", "8080", "HTTP network address")
-	flag.StringVar(&cfg.static, "static", "./ui/static/", "Path for static files")
 
 	// Call flag.Parse() only after all the flags have been declared
 	flag.Parse()
