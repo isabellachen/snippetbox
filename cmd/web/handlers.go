@@ -66,7 +66,7 @@ func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) 
 		app.clientError(w, http.StatusMethodNotAllowed, message)
 	}
 
-	id, err := app.repo.Create(item.Title, item.Content)
+	id, err := app.repo.Create(item.Title, item.Content, 1)
 
 	if err != nil {
 		app.serverError(w, err)

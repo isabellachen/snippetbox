@@ -37,11 +37,11 @@ func openDB(dsn string) (*sql.DB, error) {
 }
 
 // This will insert a new snippet into the database.
-func (m *dbRepo) Create(title string, content string) (int, error) {
+func (m *dbRepo) Create(title string, content string, expires int) (int, error) {
 	stmt := `INSERT INTO snippets (title, content, created, expires)
-	VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))`
+	VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? HOUR))`
 
-	result, err := m.db.Exec(stmt, title, content)
+	result, err := m.db.Exec(stmt, title, content, expires)
 
 	if err != nil {
 		return 0, err

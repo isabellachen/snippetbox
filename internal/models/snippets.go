@@ -13,7 +13,7 @@ type Snippet struct {
 }
 
 type Repository interface {
-	Create(title string, content string) (int, error)
+	Create(title string, content string, expires int) (int, error)
 	ById(id int) (*Snippet, error)
 	Last() (*Snippet, error)
 }

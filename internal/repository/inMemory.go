@@ -19,7 +19,7 @@ func NewInMemoryRepo() *inMemoryRepo {
 	}
 }
 
-func (r *inMemoryRepo) Create(title string, content string) (int, error) {
+func (r *inMemoryRepo) Create(title string, content string, expires int) (int, error) {
 	r.Lock()
 	defer r.Unlock()
 	s := models.Snippet{}
@@ -28,7 +28,7 @@ func (r *inMemoryRepo) Create(title string, content string) (int, error) {
 	s.Title = title
 	s.Content = content
 	s.Created = time.Now()
-	s.Expires = time.Now().Add(time.Hour)
+	s.Expires = time.Now().Add(time.Hour * time.Duration(expires))
 	r.snippets = append(r.snippets, s)
 	return s.ID, nil
 }
