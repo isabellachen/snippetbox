@@ -2,7 +2,9 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"sync"
+	"time"
 
 	"snippetbox.isachen.com/internal/models"
 )
@@ -36,12 +38,11 @@ func openDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-// This will insert a new snippet into the database.
 func (m *dbRepo) Create(title string, content string, expires int) (int, error) {
-	stmt := `INSERT INTO snippets (title, content, created, expires)
-	VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? HOUR))`
+	statement := `INSERT INTO snippets (title, content, created, expires)
+								VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? HOUR))`
 
-	result, err := m.db.Exec(stmt, title, content, expires)
+	result, err := m.db.Exec(statement, title, content, expires)
 
 	if err != nil {
 		return 0, err
@@ -55,12 +56,65 @@ func (m *dbRepo) Create(title string, content string, expires int) (int, error) 
 	return int(id), nil
 }
 
-// This will return a specific snippet based on its id.
 func (m *dbRepo) ById(id int) (*models.Snippet, error) {
-	return nil, nil
+	statement := `SELECT id, title, content, created, expires FROM snippets
+								WHERE id = ?`
+
+	row := m.db.QueryRow(statement, id)
+
+	snippet := &models.Snippet{}
+
+	err := row.Scan(&snippet.ID, &snippet.Title, &snippet.Content, &snippet.Created, &snippet.Expires)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrNoRecord
+		} else {
+			return nil, err
+		}
+	}
+
+	now := time.Now()
+
+	isExpired := snippet.Expires.Before(now)
+
+	if isExpired {
+		return nil, models.ErrIsExpired
+	}
+
+	return snippet, nil
 }
 
-// This will return the 10 most recently created snippets.
+func (m *dbRepo) Latest(limit int) ([]*models.Snippet, error) {
+	statement := `SELECT id, title, content, created, expires FROM snippets
+								WHERE expires > UTC_TIMESTAMP() ORDER BY id DESC LIMIT ?`
+
+	rows, err := m.db.Query(statement, limit)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	snippets := []*models.Snippet{}
+
+	for rows.Next() {
+		snippet := &models.Snippet{}
+		err = rows.Scan(&snippet.ID, &snippet.Title, &snippet.Content, &snippet.Created, &snippet.Expires)
+		if err != nil {
+			return nil, err
+		}
+		snippets = append(snippets, snippet)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return snippets, nil
+}
+
 func (m *dbRepo) Last() (*models.Snippet, error) {
 	return nil, nil
 }

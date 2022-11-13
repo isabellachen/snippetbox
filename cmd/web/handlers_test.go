@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +15,12 @@ import (
 	"snippetbox.isachen.com/internal/repository"
 )
 
+var (
+	title1 = "How to Make Hummums"
+	title2 = "Tasty Recipe for Curry"
+	title3 = "Evil Egg Sandwich"
+)
+
 func setupApi(t *testing.T) (string, func()) {
 	t.Helper()
 
@@ -23,6 +28,9 @@ func setupApi(t *testing.T) (string, func()) {
 	basePath := filepath.Join(cwd, "../..")
 
 	repo := repository.NewInMemoryRepo()
+	repo.Create(title1, "Buy chickpeas and crush them", 1)
+	repo.Create(title2, "Tumeric, cumin, coriander and chillies", 1)
+	repo.Create(title3, "Boiled eggs and mayonnaise", 1)
 
 	app := &application{
 		repo:     repo,
@@ -90,7 +98,6 @@ func TestGet(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	url, cleanup := setupApi(t)
-	fmt.Println(url)
 	defer cleanup()
 
 	title := "The Little Peanut"
@@ -122,7 +129,7 @@ func TestCreate(t *testing.T) {
 	})
 
 	t.Run("Check Add", func(t *testing.T) {
-		res, err := http.Get(url + "/snippet/view?id=1")
+		res, err := http.Get(url + "/snippet/view?id=4")
 		if err != nil {
 			t.Error(err)
 		}
@@ -146,6 +153,35 @@ func TestCreate(t *testing.T) {
 		if response.Result.Content != content {
 			t.Errorf("Expected title %q, got %q", content, response.Result.Content)
 		}
-
 	})
+}
+
+func TestLatest(t *testing.T) {
+	url, cleanup := setupApi(t)
+	defer cleanup()
+
+	res, err := http.Get(url + "/snippet/view?limit=2")
+	if err != nil {
+		t.Error(err)
+	}
+
+	var response latestSnippetsResponse
+
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected %q, got %q", http.StatusText(http.StatusOK), http.StatusText(res.StatusCode))
+	}
+
+	res.Body.Close()
+
+	if response.Result[0].Title != title3 {
+		t.Errorf("Expected title %q, got %q", response.Result[0].Title, title3)
+	}
+	if response.Result[1].Title != title2 {
+		t.Errorf("Expected title %q, got %q", response.Result[1].Title, title2)
+	}
 }

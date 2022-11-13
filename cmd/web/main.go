@@ -34,6 +34,8 @@ func main() {
 
 	cfg := &config{}
 
+	// parseTime=true parameter forces MySQL driver to convert TIME and DATE fields to time.Time.
+	// Otherwise it returns these as []byte objects.
 	flag.StringVar(&cfg.dsn, "dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
 	flag.StringVar(&cfg.addr, "addr", "8080", "HTTP network address")
 	flag.StringVar(&cfg.static, "static", "./ui/static/", "Path for static files")

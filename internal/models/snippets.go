@@ -16,4 +16,5 @@ type Repository interface {
 	Create(title string, content string, expires int) (int, error)
 	ById(id int) (*Snippet, error)
 	Last() (*Snippet, error)
+	Latest(limit int) ([]*Snippet, error)
 }

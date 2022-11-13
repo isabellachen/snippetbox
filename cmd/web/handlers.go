@@ -15,6 +15,10 @@ type snippetResponse struct {
 	Result *models.Snippet `json:"result"`
 }
 
+type latestSnippetsResponse struct {
+	Result []*models.Snippet `json:"result"`
+}
+
 func validateParam(param string) (int, error) {
 	id, err := strconv.Atoi(param)
 	if err != nil {
@@ -66,7 +70,7 @@ func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) 
 		app.clientError(w, http.StatusMethodNotAllowed, message)
 	}
 
-	id, err := app.repo.Create(item.Title, item.Content, 1)
+	id, err := app.repo.Create(item.Title, item.Content, 24)
 
 	if err != nil {
 		app.serverError(w, err)
@@ -79,31 +83,61 @@ func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) 
 }
 
 func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
-	param := req.URL.Query().Get("id")
-	id, err := validateParam(param)
+	query := "id"
+	param := req.URL.Query().Get(query)
+
+	if param == "" {
+		query = "limit"
+		param = req.URL.Query().Get(query)
+	}
+
+	validatedParam, err := validateParam(param)
 
 	if err != nil {
-		message := fmt.Sprintf("Item %s does not exist", param)
+		message := fmt.Sprintf("Unable to validate param %s", param)
 		app.notFound(w, message)
 		return
 	}
 
-	snippet, err := app.repo.ById(id)
-	if err != nil {
-		app.notFound(w, err.Error())
+	if query == "id" {
+		snippet, err := app.repo.ById(validatedParam)
+		if err != nil {
+			app.notFound(w, err.Error())
+		}
+
+		response := &snippetResponse{
+			Result: snippet,
+		}
+
+		b, err := json.Marshal(response)
+
+		if err != nil {
+			app.serverError(w, err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
 	}
 
-	response := &snippetResponse{
-		Result: snippet,
+	if query == "limit" {
+		snippets, err := app.repo.Latest(validatedParam)
+		if err != nil {
+			app.serverError(w, err)
+		}
+
+		response := &latestSnippetsResponse{
+			Result: snippets,
+		}
+
+		b, err := json.Marshal(response)
+
+		if err != nil {
+			app.serverError(w, err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
 	}
-
-	b, err := json.Marshal(response)
-
-	if err != nil {
-		app.serverError(w, err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
 }

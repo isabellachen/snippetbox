@@ -45,6 +45,25 @@ func (r *inMemoryRepo) ById(id int) (*models.Snippet, error) {
 	return &s, nil
 }
 
+func (r *inMemoryRepo) Latest(limit int) ([]*models.Snippet, error) {
+	r.RLock()
+	defer r.RUnlock()
+
+	var latest []*models.Snippet
+
+	if limit > len(r.snippets) {
+		return nil, fmt.Errorf("%s", "Limit is more than length of snippets")
+	}
+
+	for i := 1; i <= limit; i++ {
+		idx := len(r.snippets) - i
+		s := r.snippets[idx]
+		latest = append(latest, &s)
+	}
+
+	return latest, nil
+}
+
 func (r *inMemoryRepo) Last() (*models.Snippet, error) {
 	r.RLock()
 	defer r.RUnlock()
