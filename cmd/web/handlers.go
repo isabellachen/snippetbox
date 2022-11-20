@@ -36,9 +36,9 @@ func (app *application) HomeHandler(w http.ResponseWriter, req *http.Request) {
 		app.serverError(w, err)
 	}
 
-	data := &templateData{
-		Snippets: snippets,
-	}
+	data := app.newTemplateData(req)
+
+	data.Snippets = snippets
 
 	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
@@ -95,10 +95,9 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			app.notFound(w, err.Error())
 		}
+		data := app.newTemplateData(req)
+		data.Snippet = snippet
 
-		data := &templateData{
-			Snippet: snippet,
-		}
 		app.render(w, http.StatusOK, "view.tmpl.html", data)
 	}
 
@@ -109,7 +108,7 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 		}
 
 		files := []string{
-			"./ui/html/pages/base.tmpl.html",
+			"./ui/html/base.tmpl.html",
 			"./ui/html/partials/nav.tmpl.html",
 			"./ui/html/pages/home.tmpl.html",
 		}
@@ -121,9 +120,8 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		data := &templateData{
-			Snippets: snippets,
-		}
+		data := app.newTemplateData(req)
+		data.Snippets = snippets
 
 		err = ts.ExecuteTemplate(w, "base", data)
 		if err != nil {
