@@ -3,14 +3,12 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"sync"
 	"time"
 
 	"snippetbox.isachen.com/internal/models"
 )
 
 type dbRepo struct {
-	sync.RWMutex
 	db *sql.DB
 }
 

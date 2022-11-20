@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"path/filepath"
 	"strconv"
 
 	"snippetbox.isachen.com/internal/models"
@@ -32,25 +31,16 @@ func (app *application) HomeHandler(w http.ResponseWriter, req *http.Request) {
 		app.notFound(w, http.StatusText(http.StatusNotFound))
 	}
 
-	baseTemplatePath := filepath.Join(app.basePath, "/ui/html/pages/base.tmpl.html")
-	homeTemplatePath := filepath.Join(app.basePath, "/ui/html/pages/home.tmpl.html")
-	navTemplatePath := filepath.Join(app.basePath, "/ui/html/partials/nav.tmpl.html")
-
-	files := []string{
-		baseTemplatePath,
-		homeTemplatePath,
-		navTemplatePath,
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	err = ts.ExecuteTemplate(w, "base", nil)
+	snippets, err := app.repo.Latest(10)
 	if err != nil {
 		app.serverError(w, err)
 	}
+
+	data := &templateData{
+		Snippets: snippets,
+	}
+
+	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
 
 func (app *application) SnippetCreate(w http.ResponseWriter, req *http.Request) {
@@ -101,23 +91,15 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 
 	if query == "id" {
 		snippet, err := app.repo.ById(validatedParam)
+
 		if err != nil {
 			app.notFound(w, err.Error())
 		}
 
-		response := &snippetResponse{
-			Result: snippet,
+		data := &templateData{
+			Snippet: snippet,
 		}
-
-		b, err := json.Marshal(response)
-
-		if err != nil {
-			app.serverError(w, err)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
+		app.render(w, http.StatusOK, "view.tmpl.html", data)
 	}
 
 	if query == "limit" {
@@ -126,18 +108,26 @@ func (app *application) SnippetView(w http.ResponseWriter, req *http.Request) {
 			app.serverError(w, err)
 		}
 
-		response := &latestSnippetsResponse{
-			Result: snippets,
+		files := []string{
+			"./ui/html/pages/base.tmpl.html",
+			"./ui/html/partials/nav.tmpl.html",
+			"./ui/html/pages/home.tmpl.html",
 		}
 
-		b, err := json.Marshal(response)
+		ts, err := template.ParseFiles(files...)
 
 		if err != nil {
 			app.serverError(w, err)
+			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
+		data := &templateData{
+			Snippets: snippets,
+		}
+
+		err = ts.ExecuteTemplate(w, "base", data)
+		if err != nil {
+			app.serverError(w, err)
+		}
 	}
 }

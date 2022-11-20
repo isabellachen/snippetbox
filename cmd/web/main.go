@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -23,15 +24,15 @@ type config struct {
 }
 
 type application struct {
-	infoLog  *log.Logger
-	errorLog *log.Logger
-	basePath string
-	repo     models.Repository
+	infoLog       *log.Logger
+	errorLog      *log.Logger
+	basePath      string
+	repo          models.Repository
+	templateCache map[string]*template.Template
 }
 
 func main() {
 	cwd, _ := os.Getwd()
-
 	cfg := &config{}
 
 	// parseTime=true parameter forces MySQL driver to convert TIME and DATE fields to time.Time.
@@ -46,11 +47,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	app := &application{
-		repo:     repo,
-		basePath: cwd,
-		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
-		errorLog: log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
+		repo:          repo,
+		basePath:      cwd,
+		infoLog:       log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
+		errorLog:      log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
+		templateCache: templateCache,
 	}
 
 	// Call flag.Parse() only after all the flags have been declared
